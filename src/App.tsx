@@ -7,6 +7,8 @@ import { Home } from './pages/Home';
 import { Directory } from './pages/Directory';
 import { ListingDetail } from './pages/ListingDetail';
 import { AuthPages } from './pages/AuthPages';
+import { Dashboard } from './pages/Dashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
 
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: string }) => {
   const { user, loading } = useAuth();
@@ -44,10 +46,7 @@ export default function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Layout>
-                <div className="max-w-7xl mx-auto px-4 py-12">
-                  <h1 className="text-3xl font-bold mb-8">Tableau de bord</h1>
-                  <p className="text-slate-500 italic">Interface du tableau de bord en cours de développement...</p>
-                </div>
+                <Dashboard />
               </Layout>
             </ProtectedRoute>
           } />
@@ -55,10 +54,7 @@ export default function App() {
           <Route path="/admin" element={
             <ProtectedRoute role="admin">
               <Layout>
-                <div className="max-w-7xl mx-auto px-4 py-12">
-                  <h1 className="text-3xl font-bold mb-8">Administration</h1>
-                  <p className="text-slate-500 italic">Interface d'administration en cours de développement...</p>
-                </div>
+                <AdminDashboard />
               </Layout>
             </ProtectedRoute>
           } />

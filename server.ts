@@ -94,29 +94,61 @@ db.exec(`
 
 // Seed initial data if empty
 const categoryCount = db.prepare("SELECT COUNT(*) as count FROM categories").get() as { count: number };
-if (categoryCount.count === 0) {
-  const categories = [
-    ['Hôtels & Hébergement', 'hotels-hebergement', 'Hotel'],
-    ['Restaurants & Cafés', 'restaurants-cafes', 'Utensils'],
-    ['Santé & Médical', 'sante-medical', 'Stethoscope'],
-    ['Automobile & Transport', 'automobile-transport', 'Car'],
-    ['Services Professionnels', 'services-professionnels', 'Briefcase'],
-    ['Shopping & Commerces', 'shopping-commerces', 'ShoppingBag'],
-    ['Art & Culture', 'art-culture', 'Palette'],
-    ['Technologie & Informatique', 'technologie-informatique', 'Laptop']
-  ];
-  const insertCat = db.prepare("INSERT INTO categories (name, slug, icon) VALUES (?, ?, ?)");
-  categories.forEach(cat => insertCat.run(cat));
+const userCount = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
 
-  const regions = ['Analamanga', 'Vakinankaratra', 'Atsinanana', 'Diana', 'Boeny', 'Sava', 'Anosy', 'Menabe'];
-  const insertRegion = db.prepare("INSERT INTO regions (name) VALUES (?)");
-  regions.forEach(r => insertRegion.run(r));
+if (categoryCount.count === 0 || userCount.count === 0) {
+  // Clear if partial
+  if (categoryCount.count === 0) {
+    const categories = [
+      ['Hôtels & Hébergement', 'hotels-hebergement', 'Hotel'],
+      ['Restaurants & Cafés', 'restaurants-cafes', 'Utensils'],
+      ['Santé & Médical', 'sante-medical', 'Stethoscope'],
+      ['Automobile & Transport', 'automobile-transport', 'Car'],
+      ['Services Professionnels', 'services-professionnels', 'Briefcase'],
+      ['Shopping & Commerces', 'shopping-commerces', 'ShoppingBag'],
+      ['Art & Culture', 'art-culture', 'Palette'],
+      ['Technologie & Informatique', 'technologie-informatique', 'Laptop']
+    ];
+    const insertCat = db.prepare("INSERT INTO categories (name, slug, icon) VALUES (?, ?, ?)");
+    categories.forEach(cat => insertCat.run(cat));
 
-  const cities = [
-    ['Antananarivo', 1], ['Antsirabe', 2], ['Toamasina', 3], ['Antsiranana', 4], ['Mahajanga', 5], ['Sambava', 6], ['Fort-Dauphin', 7], ['Morondava', 8]
-  ];
-  const insertCity = db.prepare("INSERT INTO cities (name, region_id) VALUES (?, ?)");
-  cities.forEach(c => insertCity.run(c));
+    const regions = ['Analamanga', 'Vakinankaratra', 'Atsinanana', 'Diana', 'Boeny', 'Sava', 'Anosy', 'Menabe'];
+    const insertRegion = db.prepare("INSERT INTO regions (name) VALUES (?)");
+    regions.forEach(r => insertRegion.run(r));
+
+    const cities = [
+      ['Antananarivo', 1], ['Antsirabe', 2], ['Toamasina', 3], ['Antsiranana', 4], ['Mahajanga', 5], ['Sambava', 6], ['Fort-Dauphin', 7], ['Morondava', 8]
+    ];
+    const insertCity = db.prepare("INSERT INTO cities (name, region_id) VALUES (?, ?)");
+    cities.forEach(c => insertCity.run(c));
+  }
+
+  if (userCount.count === 0) {
+    // Seed Accounts
+    const hashedPassword = bcrypt.hashSync("password123", 10);
+    db.prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)").run("Admin Mada", "admin@mada.mg", hashedPassword, "admin");
+    db.prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)").run("Jean Pro", "pro@mada.mg", hashedPassword, "pro");
+    db.prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)").run("Client Lambda", "user@mada.mg", hashedPassword, "user");
+
+    // Seed Listings
+    const listings = [
+      [2, 1, 1, 'Hôtel Carlton', 'hotel-carlton', 'Hôtel 5 étoiles au coeur d\'Antananarivo avec vue panoramique.', 'Anosy, Antananarivo', '+261 20 22 260 60', '+261 34 00 000 01', 'contact@carlton.mg', 'https://carlton.mg', 1, 1, 'published'],
+      [2, 2, 1, 'Le Jardin d\'Antanimena', 'le-jardin-antanimena', 'Cuisine raffinée dans un cadre verdoyant et calme.', 'Antanimena, Antananarivo', '+261 20 22 333 44', null, 'info@lejardin.mg', null, 0, 1, 'published'],
+      [2, 3, 1, 'Clinique et Maternité d\'Ankadifotsy', 'clinique-ankadifotsy', 'Soins médicaux de qualité et urgences 24h/24.', 'Ankadifotsy, Antananarivo', '+261 20 22 235 55', null, null, null, 0, 1, 'published'],
+      [2, 1, 3, 'Hôtel de l\'Avenue Toamasina', 'hotel-avenue-toamasina', 'Confort et proximité du port pour vos séjours d\'affaires.', 'Boulevard Joffre, Toamasina', '+261 20 53 321 00', null, 'resa@hotelavenue.mg', null, 1, 0, 'published'],
+      [2, 6, 5, 'Baobab Mall Mahajanga', 'baobab-mall', 'Le plus grand centre commercial de la ville avec boutiques et food court.', 'Bord de mer, Mahajanga', null, null, null, null, 0, 0, 'published']
+    ];
+    const insertListing = db.prepare(`
+      INSERT INTO listings (user_id, category_id, city_id, title, slug, description, address, phone, whatsapp, email, website, is_featured, is_verified, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    listings.forEach(l => insertListing.run(l));
+
+    // Seed Reviews
+    db.prepare("INSERT INTO reviews (listing_id, user_id, rating, comment) VALUES (?, ?, ?, ?)").run(1, 3, 5, "Excellent service et vue imprenable !");
+    db.prepare("INSERT INTO reviews (listing_id, user_id, rating, comment) VALUES (?, ?, ?, ?)").run(1, 2, 4, "Très bon séjour, personnel accueillant.");
+    db.prepare("INSERT INTO reviews (listing_id, user_id, rating, comment) VALUES (?, ?, ?, ?)").run(2, 3, 5, "Le meilleur canard laqué de Tana.");
+  }
 }
 
 async function startServer() {
