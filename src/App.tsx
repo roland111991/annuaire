@@ -9,6 +9,7 @@ import { ListingDetail } from './pages/ListingDetail';
 import { AuthPages } from './pages/AuthPages';
 import { Dashboard } from './pages/Dashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { NewListing } from './pages/NewListing';
 
 const ProtectedRoute = ({ children, role }: { children: React.ReactNode, role?: string }) => {
   const { user, loading } = useAuth();
@@ -47,6 +48,14 @@ export default function App() {
             <ProtectedRoute>
               <Layout>
                 <Dashboard />
+              </Layout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/dashboard/new-listing" element={
+            <ProtectedRoute role="pro">
+              <Layout>
+                <NewListing />
               </Layout>
             </ProtectedRoute>
           } />

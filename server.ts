@@ -292,13 +292,13 @@ async function startServer() {
   });
 
   app.post("/api/listings", authenticate, (req: any, res) => {
-    const { title, category_id, city_id, description, address, phone, whatsapp, email, website } = req.body;
+    const { title, category_id, city_id, description, address, phone, whatsapp, email, website, images } = req.body;
     const slug = title.toLowerCase().replace(/ /g, '-') + '-' + Date.now();
     try {
       const result = db.prepare(`
-        INSERT INTO listings (user_id, category_id, city_id, title, slug, description, address, phone, whatsapp, email, website)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(req.user.id, category_id, city_id, title, slug, description, address, phone, whatsapp, email, website);
+        INSERT INTO listings (user_id, category_id, city_id, title, slug, description, address, phone, whatsapp, email, website, images)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(req.user.id, category_id, city_id, title, slug, description, address, phone, whatsapp, email, website, images);
       res.json({ id: result.lastInsertRowid, slug });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
@@ -312,9 +312,44 @@ async function startServer() {
       users: db.prepare("SELECT COUNT(*) as count FROM users").get(),
       listings: db.prepare("SELECT COUNT(*) as count FROM listings").get(),
       pending: db.prepare("SELECT COUNT(*) as count FROM listings WHERE status = 'pending'").get(),
-      views: db.prepare("SELECT SUM(views) as count FROM listings").get()
+      views: db.prepare("SELECT IFNULL(SUM(views), 0) as count FROM listings").get()
     };
     res.json(stats);
+  });
+
+  app.get("/api/admin/listings", authenticate, (req: any, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+    const { status } = req.query;
+    let query = `
+      SELECT listings.*, categories.name as category_name, cities.name as city_name, users.name as owner_name
+      FROM listings 
+      JOIN categories ON listings.category_id = categories.id
+      JOIN cities ON listings.city_id = cities.id
+      JOIN users ON listings.user_id = users.id
+    `;
+    const params: any[] = [];
+    if (status) {
+      query += " WHERE listings.status = ?";
+      params.push(status);
+    }
+    query += " ORDER BY listings.created_at DESC";
+    const listings = db.prepare(query).all(params);
+    res.json(listings);
+  });
+
+  app.patch("/api/admin/listings/:id/status", authenticate, (req: any, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: "Forbidden" });
+    const { id } = req.params;
+    const { status } = req.body;
+    if (!['published', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+    try {
+      db.prepare("UPDATE listings SET status = ? WHERE id = ?").run(status, id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
   });
 
   // Vite middleware

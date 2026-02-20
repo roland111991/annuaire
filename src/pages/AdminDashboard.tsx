@@ -3,21 +3,42 @@ import {
   Users, FileText, Clock, Eye, 
   CheckCircle, XCircle, Shield, 
   Search, Filter, MoreVertical,
-  TrendingUp, TrendingDown
+  TrendingUp, TrendingDown, ExternalLink
 } from 'lucide-react';
+import { Listing } from '../types';
+import { Link } from 'react-router-dom';
 
 export const AdminDashboard = () => {
   const [stats, setStats] = useState<any>(null);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
-    fetch('/api/admin/stats')
-      .then(res => res.json())
-      .then(data => {
-        setStats(data);
-        setLoading(false);
+    Promise.all([
+      fetch('/api/admin/stats').then(res => res.json()),
+      fetch('/api/admin/listings?status=pending').then(res => res.json())
+    ]).then(([statsData, listingsData]) => {
+      setStats(statsData);
+      setListings(listingsData);
+      setLoading(false);
+    });
+  }, [refresh]);
+
+  const updateStatus = async (id: number, status: string) => {
+    try {
+      const res = await fetch(`/api/admin/listings/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
       });
-  }, []);
+      if (res.ok) {
+        setRefresh(prev => prev + 1);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const statCards = [
     { label: 'Utilisateurs', value: stats?.users?.count || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: '+12%', up: true },
@@ -66,7 +87,7 @@ export const AdminDashboard = () => {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="font-bold">Modération des fiches</h3>
+                <h3 className="font-bold">Modération des fiches ({listings.length})</h3>
                 <div className="flex gap-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -80,42 +101,59 @@ export const AdminDashboard = () => {
                   <thead className="bg-slate-50 text-xs text-slate-500 uppercase tracking-wider">
                     <tr>
                       <th className="px-6 py-4 font-medium">Prestataire</th>
-                      <th className="px-6 py-4 font-medium">Date</th>
+                      <th className="px-6 py-4 font-medium">Catégorie / Ville</th>
                       <th className="px-6 py-4 font-medium">Status</th>
                       <th className="px-6 py-4 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {[
-                      { name: 'Garage du Sud', date: 'Il y a 2h', status: 'pending' },
-                      { name: 'Restaurant Le Phare', date: 'Il y a 5h', status: 'pending' },
-                      { name: 'Hôtel Baobab', date: 'Hier', status: 'published' },
-                      { name: 'Mada Tech', date: 'Hier', status: 'rejected' },
-                    ].map((item, i) => (
-                      <tr key={i} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-bold text-sm">{item.name}</div>
-                          <div className="text-[10px] text-slate-400">Par: Jean Pro</div>
-                        </td>
-                        <td className="px-6 py-4 text-xs text-slate-500">{item.date}</td>
-                        <td className="px-6 py-4">
-                          {item.status === 'published' ? (
-                            <span className="bg-green-50 text-green-600 px-2 py-1 rounded text-[10px] font-bold">Publié</span>
-                          ) : item.status === 'pending' ? (
+                    {loading ? (
+                      <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Chargement...</td></tr>
+                    ) : listings.length > 0 ? (
+                      listings.map((item) => (
+                        <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-sm">{item.title}</div>
+                            <div className="text-[10px] text-slate-400">Par: {item.owner_name}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-medium">{item.category_name}</div>
+                            <div className="text-[10px] text-slate-400">{item.city_name}</div>
+                          </td>
+                          <td className="px-6 py-4">
                             <span className="bg-yellow-50 text-yellow-600 px-2 py-1 rounded text-[10px] font-bold">En attente</span>
-                          ) : (
-                            <span className="bg-red-50 text-red-600 px-2 py-1 rounded text-[10px] font-bold">Rejeté</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                            <button className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"><CheckCircle size={16} /></button>
-                            <button className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"><XCircle size={16} /></button>
-                            <button className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"><MoreVertical size={16} /></button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => updateStatus(item.id, 'published')}
+                                className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
+                                title="Approuver"
+                              >
+                                <CheckCircle size={16} />
+                              </button>
+                              <button 
+                                onClick={() => updateStatus(item.id, 'rejected')}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                                title="Rejeter"
+                              >
+                                <XCircle size={16} />
+                              </button>
+                              <Link 
+                                to={`/listing/${item.slug}`} 
+                                target="_blank"
+                                className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg"
+                                title="Voir"
+                              >
+                                <ExternalLink size={16} />
+                              </Link>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">Aucune fiche en attente de modération.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -181,3 +219,4 @@ export const AdminDashboard = () => {
     </div>
   );
 };
+
