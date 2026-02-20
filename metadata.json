@@ -1,0 +1,5 @@
+{
+  "name": "MadaAnnuaire - L'Annuaire de Madagascar",
+  "description": "Plateforme d'annuaire complète pour les professionnels et particuliers à Madagascar. Recherchez des entreprises, services et commerces locaux.",
+  "requestFramePermissions": ["geolocation"]
+}
