@@ -11,7 +11,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const db = new Database("mada_annuaire.db");
+// Utilisation de SQLite pour une mise en ligne facile (base de données dans un seul fichier)
+const dbPath = path.resolve(__dirname, "mada_annuaire.db");
+const db = new Database(dbPath);
 const JWT_SECRET = process.env.JWT_SECRET || "mada-secret-key-2026";
 
 // Initialize Database
